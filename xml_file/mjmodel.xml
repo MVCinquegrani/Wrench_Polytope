@@ -1,0 +1,75 @@
+<mujoco model="robot">
+  <compiler angle="radian"/>
+
+  <worldbody>
+    <geom size="0.1881 0.04675 0.057" type="box"/>
+    <body name="RF_hip" pos="0.1881 -0.04675 0">
+      <inertial pos="-0.00541 0.00074 6e-06" quat="0.46479 0.464271 0.528995 0.537203" mass="0.591" diaginertia="0.000641022 0.000457646 0.000369171"/>
+      <joint name="RF_HAA" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7"/>
+      <geom size="0.046 0.02" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 0.423529 0.0392157 1"/>
+      <body name="RF_thigh" pos="0 -0.08 0">
+        <inertial pos="-0.003468 0.018947 -0.032736" quat="0.999398 -0.00213721 -0.0341314 -0.00590909" mass="0.92" diaginertia="0.00587404 0.00559622 0.00104903"/>
+        <joint name="RF_HFE" pos="0 0 0" axis="0 1 0" range="-0.663225 2.96706" actuatorfrcrange="-23.7 23.7"/>
+        <geom size="0.1065 0.01225 0.017" pos="-0.015 0 -0.1065" quat="0.670882 0 0.741564 0" type="box" rgba="1 0.423529 0.0392157 1"/>
+        <geom size="0.041 0.016" pos="0 0.008 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 0.423529 0.0392157 1"/>
+        <body name="RF_calf" pos="0 0 -0.213">
+          <inertial pos="0.00431134 0.000896424 -0.150771" quat="0.762414 0.00939942 0.0179881 0.646772" mass="0.191" diaginertia="0.0033064 0.00329235 3.62038e-05"/>
+          <joint name="RF_KFE" pos="0 0 0" axis="0 1 0" range="-2.72271 -0.837758" actuatorfrcrange="-23.7 23.7"/>
+          <geom size="0.1065 0.008 0.008" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 0.423529 0.0392157 1"/>
+          <geom size="0.02" pos="0 0 -0.213" rgba="1 0.423529 0.0392157 1"/>
+        </body>
+      </body>
+    </body>
+    <body name="LF_hip" pos="0.1881 0.04675 0">
+      <inertial pos="-0.00541 -0.00074 6e-06" quat="0.537203 0.528995 0.464271 0.46479" mass="0.591" diaginertia="0.000641022 0.000457646 0.000369171"/>
+      <joint name="LF_HAA" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7"/>
+      <geom size="0.046 0.02" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 0.423529 0.0392157 1"/>
+      <body name="LF_thigh" pos="0 0.08 0">
+        <inertial pos="-0.003468 -0.018947 -0.032736" quat="0.999398 0.00213721 -0.0341314 0.00590909" mass="0.92" diaginertia="0.00587404 0.00559622 0.00104903"/>
+        <joint name="LF_HFE" pos="0 0 0" axis="0 1 0" range="-0.663225 2.96706" actuatorfrcrange="-23.7 23.7"/>
+        <geom size="0.1065 0.01225 0.017" pos="-0.015 0 -0.1065" quat="0.670882 0 0.741564 0" type="box" rgba="1 0.423529 0.0392157 1"/>
+        <geom size="0.041 0.016" pos="0 -0.008 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 0.423529 0.0392157 1"/>
+        <body name="LF_calf" pos="0 0 -0.213">
+          <inertial pos="0.00431134 0.000896424 -0.150771" quat="0.762414 0.00939942 0.0179881 0.646772" mass="0.191" diaginertia="0.0033064 0.00329235 3.62038e-05"/>
+          <joint name="LF_KFE" pos="0 0 0" axis="0 1 0" range="-2.72271 -0.837758" actuatorfrcrange="-23.7 23.7"/>
+          <geom size="0.1065 0.008 0.008" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 0.423529 0.0392157 1"/>
+          <geom size="0.02" pos="0 0 -0.213" rgba="1 0.423529 0.0392157 1"/>
+        </body>
+      </body>
+    </body>
+    <body name="RH_hip" pos="-0.1881 -0.04675 0">
+      <inertial pos="0.00541 0.00074 6e-06" quat="0.528995 0.537203 0.46479 0.464271" mass="0.591" diaginertia="0.000641022 0.000457646 0.000369171"/>
+      <joint name="RH_HAA" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7"/>
+      <geom size="0.046 0.02" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 0.423529 0.0392157 1"/>
+      <body name="RH_thigh" pos="0 -0.08 0">
+        <inertial pos="-0.003468 0.018947 -0.032736" quat="0.999398 -0.00213721 -0.0341314 -0.00590909" mass="0.92" diaginertia="0.00587404 0.00559622 0.00104903"/>
+        <joint name="RH_HFE" pos="0 0 0" axis="0 1 0" range="-0.663225 2.96706" actuatorfrcrange="-23.7 23.7"/>
+        <geom size="0.1065 0.01225 0.017" pos="-0.015 0 -0.1065" quat="0.670882 0 0.741564 0" type="box" rgba="1 0.423529 0.0392157 1"/>
+        <geom size="0.041 0.016" pos="0 0.008 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 0.423529 0.0392157 1"/>
+        <body name="RH_calf" pos="0 0 -0.213">
+          <inertial pos="0.00431134 0.000896424 -0.150771" quat="0.762414 0.00939942 0.0179881 0.646772" mass="0.191" diaginertia="0.0033064 0.00329235 3.62038e-05"/>
+          <joint name="RH_KFE" pos="0 0 0" axis="0 1 0" range="-2.72271 -0.837758" actuatorfrcrange="-23.7 23.7"/>
+          <geom size="0.1065 0.008 0.008" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 0.423529 0.0392157 1"/>
+          <geom size="0.02" pos="0 0 -0.213" rgba="1 0.423529 0.0392157 1"/>
+        </body>
+      </body>
+    </body>
+    <body name="LH_hip" pos="-0.1881 0.04675 0">
+      <inertial pos="0.00541 -0.00074 6e-06" quat="0.464271 0.46479 0.537203 0.528995" mass="0.591" diaginertia="0.000641022 0.000457646 0.000369171"/>
+      <joint name="LH_HAA" pos="0 0 0" axis="1 0 0" range="-1.0472 1.0472" actuatorfrcrange="-23.7 23.7"/>
+      <geom size="0.046 0.02" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 0.423529 0.0392157 1"/>
+      <body name="LH_thigh" pos="0 0.08 0">
+        <inertial pos="-0.003468 -0.018947 -0.032736" quat="0.999398 0.00213721 -0.0341314 0.00590909" mass="0.92" diaginertia="0.00587404 0.00559622 0.00104903"/>
+        <joint name="LH_HFE" pos="0 0 0" axis="0 1 0" range="-0.663225 2.96706" actuatorfrcrange="-23.7 23.7"/>
+        <geom size="0.1065 0.01225 0.017" pos="-0.015 0 -0.1065" quat="0.670882 0 0.741564 0" type="box" rgba="1 0.423529 0.0392157 1"/>
+        <geom size="0.041 0.016" pos="0 -0.008 0" quat="0.707107 0.707107 0 0" type="cylinder" rgba="1 0.423529 0.0392157 1"/>
+        <body name="LH_calf" pos="0 0 -0.213">
+          <inertial pos="0.00431134 0.000896424 -0.150771" quat="0.762414 0.00939942 0.0179881 0.646772" mass="0.191" diaginertia="0.0033064 0.00329235 3.62038e-05"/>
+          <joint name="LH_KFE" pos="0 0 0" axis="0 1 0" range="-2.72271 -0.837758" actuatorfrcrange="-23.7 23.7"/>
+          <geom size="0.1065 0.008 0.008" pos="0 0 -0.1065" quat="0.707107 0 0.707107 0" type="box" rgba="1 0.423529 0.0392157 1"/>
+          <geom size="0.02" pos="0 0 -0.213" rgba="1 0.423529 0.0392157 1"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>
