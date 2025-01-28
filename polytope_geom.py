@@ -247,10 +247,31 @@ class Polytope:
             p.find_halfplanes()
         H_int = np.vstack((self.H,p.H))
         d_int = np.vstack((self.d,p.d))
-        return Polytope(H=H_int,d=d_int)
+        redundant_poly = Polytope(H=H_int,d=d_int)
+        redundant_poly.find_vertices()
+        poly = Polytope()
+        poly.find_from_point_cloud(redundant_poly.vertices)
+
+        vertices = poly.vertices.T
+        poly.face_indices = vertex_to_faces(poly.vertices)
+        used_indices = set(np.unique(poly.face_indices)) 
+        all_indices = set(range(len(vertices)))
+        unused_indices = all_indices - used_indices
+
+        if len(unused_indices) > 0:
+            used_vertices = vertices[list(used_indices)]
+            new_poly = Polytope()
+            new_poly.find_from_point_cloud(used_vertices.T)
+            return new_poly
+        else:
+            return poly
+
+
     
     def intersection(self, poly):
         p_int = self & poly
+        p_int.vertices, p_int.face_indices = hspace_to_vertex(p_int.H,p_int.d)
+
         return p_int
     
 
@@ -283,7 +304,7 @@ class Polytope:
         ax.add_collection3d(Poly3DCollection(self.grouped_vertices, facecolors=color, linewidths=1.0, edgecolors=(1,0,0,0.1), alpha=.25))     
         plot_patch = Patch(color=color) 
         legend_elements.append((plot_patch))
-        legeend_labels.append((" force geometry"))
+        legeend_labels.append((" torque geometry"))
 
         ax.set_xlim([p_min[0],p_max[0]])
         ax.set_ylim([p_min[1],p_max[1]])
@@ -390,9 +411,9 @@ def vertex_to_hspace(vertex):
         d(list): vector of half-space representation `Hx<d`
     """
     try:
-        hull = ConvexHull(vertex.T, qhull_options='Q0')
+        hull = ConvexHull(vertex.T, qhull_options='QJ')
     except:
-        hull = ConvexHull(vertex.T, qhull_options='Qbk:0Bk:0')
+        hull = ConvexHull(vertex.T, qhull_options='QJ0')
 
     return  hull.equations[:,:-1], -hull.equations[:,-1].reshape((-1,1))
 

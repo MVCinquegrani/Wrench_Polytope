@@ -13,13 +13,6 @@ def expand_path(path):
         return path.replace('~', f"/home/{os.environ['USER']}", 1)
     return path
 
-# Configurable paths
-# MODEL_PATHS = {
-#     'mujoco': '/home/mavi/cernbox/UBUNTU/Desktop/legged_robot/quadruped-control-main/legged_ctrl_ws/src/mujoco/xml_file/scene_w_sensor.xml',
-#     'pinocchio': '/home/mavi/cernbox/UBUNTU/Desktop/legged_robot/quadruped-control-main/legged_ctrl_ws/src/unitree-go1-control-framework/legged_examples/legged_unitree/legged_unitree_description/urdf/go1_abs.urdf',
-#     'end_effector_sites': '/home/mavi/cernbox/UBUNTU/Desktop/legged_robot/quadruped-control-main/legged_ctrl_ws/src/mujoco/xml_file/go1_sensor.xml'
-# }
-
 MODEL_PATHS = {
     'mujoco': '~/cernbox/UBUNTU/Desktop/legged_robot/quadruped-control-main/legged_ctrl_ws/src/mujoco/xml_file/scene_w_sensor.xml',
     'pinocchio': '~/cernbox/UBUNTU/Desktop/legged_robot/quadruped-control-main/legged_ctrl_ws/src/unitree-go1-control-framework/legged_examples/legged_unitree/legged_unitree_description/urdf/go1_abs.urdf',
@@ -34,10 +27,6 @@ mjmodel, mjdata = muj_ut.load_model_from_path(MODEL_PATHS['mujoco'])
 
 # Pinocchio use URDF but because of MeshCat the urdf has to have the absolute path for the meshes  
 pmodel, pdata = pin_ut.load_model_with_viewer (MODEL_PATHS['pinocchio'], MODEL_PATHS['mesh_dir'])
-# fwp.read_feet_site_xml(MODEL_PATHS['end_effector_sites']) # not working
-
-# Display robot configuration
-# pin_ut.display_in_Meshcat(viz)
 
 # Get the initial state from xml 
 mjqpos0 = muj_ut.get_initial_qpos(mjmodel)
@@ -70,14 +59,12 @@ while True:
         contacts.update(mjmodel, mjdata)
         contacts.print_contact_forces()
 
-        polys = []
-
         if mjdata.time >= 0.3:
 
             # Force Geometry
             fwp.contacts_linking(leg_force_limits, contacts)
-            Force_Polys = fwp.compute_polytopes(leg_force_limits, True)
-            # fwp.display_more(Force_Polys, " force geometry")
+            Force_Polys = fwp.compute_polytopes(leg_force_limits)
+            fwp.display_more(Force_Polys, " force geometry")
 
                                             # # Chris
                                             # Wpoly,WPoly3D = fwp.compute_wrench_polytope(leg_force_limits)
@@ -85,53 +72,28 @@ while True:
 
             # Friction Geometry
             Fpolys = fwp.compute_friction_pyramids(contacts)
-            # fwp.display_more(Fpoly, " Friction pyramids")
+            fwp.display_more(Fpolys, " Friction pyramids")
 
-            # Polts customized
+            # # Polts customized
             # fwp.display_FPolys_with_contacts(leg_force_limits)
             # fwp.display_PPolys_with_contacts(Fpolys)
-
-
-            # polys = list(Force_Polys)       # copy the surfece, the object inside still points to the same memory
-            # polys.extend(Fpolys)
-            # # fwp.display_more(polys)
 
             # Geometry intersection (ContactPolytope type)
             intersection_polys = fwp.compute_intersection(leg_force_limits, Fpolys)
             fwp.display_more(intersection_polys, " Intersection Geometry")
 
             # Add the trorque to the interection polytope
-            Wpoly,WPoly3D = fwp.compute_wrench_polytope(intersection_polys) 
+            WPoly,WPoly3D = fwp.compute_wrench_polytope(intersection_polys) 
             fwp.display_more(WPoly3D, " torque poly")
-            # blabla = []
-            # blabla.append(Wpoly[0])
-            # blabla.append(Wpoly[0])
-            # ciaaa = fwp.Minkowski_Sum(blabla)
 
             # Compute the Minkowski Sum of the intersections (pyc) (line 171 polytope_geom file)
-            FWP = fwp.Minkowski_Sum(Wpoly)
+            FWP = fwp.Minkowski_Sum(WPoly)
             # FWP3D = fwp.reduction3D(FWP)
             FWP.display('green')    
 
             # # w_GI = np.array([...])  # Replace with the actual gravito-inertial wrench vector.
             # s = fwp.compute_feasibility_metric(Wpoly)
             # print("Feasibility metric:", s)
-
-
-
-            
-
-        # Update Meshcat
-        # viz.display(q)
-
-        # for frame in pmodel.frames:
-        #     # Ottieni il nome e la posizione del frame
-        #     frame_name = frame.name
-        #     frame_placement = frame.placement
-
-        #     # Aggiungi un frame al visualizzatore
-        #     viz.viewer["frames/" + frame_name].set_transform(frame_placement.homogeneous)
-        #     viz.viewer["frames/" + frame_name].set_object(meshcat.geometry.Box([0.01, 0.01, 0.01]))  # Una piccola rappresentazione del frame
 
 
         # Update view window of Mujoco
@@ -149,14 +111,3 @@ while True:
     #     print(f"Error during simulation: {e}")
     #     break
 
-
-
-# # Jacobian in Mujoco
-# efc_J = mjdata.efc_J
-# expected_size = 36 * 18
-# if efc_J.size != expected_size:
-#     raise ValueError(f"La dimensione dell'array efc_J ({efc_J.size}) non corrisponde a quella prevista ({expected_size}).")
-# dense_matrix = efc_J.reshape((36, 18))
-# np.set_printoptions(suppress=True,linewidth=500)
-# dense_matrix_pretty = np.array2string(dense_matrix,precision=6,floatmode='fixed')
-# print(dense_matrix_pretty)

@@ -63,19 +63,19 @@ class ForcePolytopeBuilder:
                 )
             self.force_limits.append(force)
     
-    def find_polytope(self, only_contact=False):
+    def find_polytope(self):
         if self.force_limits is not None:
             if self.contact is not None:
                 self.find_contact_polytope()
             else:
-                if only_contact is False:
-                    l = len(self.force_limits)
-                    verts = np.zeros((l, 3))
-                    for i, f in enumerate(self.force_limits):
-                        point = f.force/1000 # from mm to m
-                        verts[i] = point
-                    verts = np.array(verts).T
-                    self.polytope = ply.Polytope(verts)
+                l = len(self.force_limits)
+                verts = np.zeros((l, 3))
+                for i, f in enumerate(self.force_limits):
+                    point = f.force/1000 # from mm to m
+                    verts[i] = point
+                verts = np.array(verts).T
+                self.polytope = ply.Polytope()
+                self.polytope.find_from_point_cloud(verts)
         else:
             print ("no list of limit forces\n")
 
@@ -102,7 +102,8 @@ class ForcePolytopeBuilder:
             point = self.contact.contact_point + f.force/1000 # from mm to m
             verts[i] = point
         self.poly_verts_contact = np.array(verts).T
-        self.polytope = ply.Polytope(self.poly_verts_contact)
+        self.polytope = ply.Polytope()
+        self.polytope.find_from_point_cloud(self.poly_verts_contact)
 
 
 
@@ -273,10 +274,10 @@ def contacts_linking(leg_forces_limit, contacts):
     for f in leg_forces_limit:
         f.find_contact(contacts)
 
-def compute_polytopes(leg_forces_limits, only_contact=False):
+def compute_polytopes(leg_forces_limits):
     poly_list = []
     for f in leg_forces_limits:
-        f.find_polytope(only_contact)
+        f.find_polytope()
         poly_list.append(f.polytope)
     return poly_list
 
@@ -336,7 +337,8 @@ def compute_friction_pyramids(contacts):
                 vertices[i+1] = vertex
 
             vertices = np.array(vertices)
-            poly = ply.Polytope(vertices.T)  
+            poly = ply.Polytope()  
+            poly.find_from_point_cloud(vertices.T)
             poly.find_grouped_vertices()
             pyram = ply.ContactPolytope(contact, EE, poly)
             # pyram = Poly3DCollection(poly.grouped_vertices, facecolors='cyan', linewidths=1.0, edgecolors=(1,0,1,0.1), alpha=.25)
@@ -388,6 +390,7 @@ def display_PPolys_with_contacts(Fpoly):
         ax.add_collection3d(pyram)
 
         vertices = np.array(forces.vertices)
+        ax.scatter(vertices[0], vertices[1], vertices[2], color='grey') #display vertices
         for i, verts in enumerate(vertices):
             p_min = np.minimum(p_min, np.min(verts,axis = 0))
             p_max = np.maximum(p_max, np.max(verts,axis = 0))
@@ -396,19 +399,15 @@ def display_PPolys_with_contacts(Fpoly):
             legend_elements.append((plot_pyram))
             legeend_labels.append(("Friction pyramids"))
 
-        # Contact point
-        vertices = vertices.T
-        p = vertices[0]
-        plot_contact = ax.scatter(p[0], p[1], p[2], color='red')
-        if j == 0:
-                legend_elements.append((plot_contact))
-                legeend_labels.append(("Contact points"))
-
-         #  Dispaly the cotact force vector
+         #  Dispaly the Contact point and force vector
         contact = forces.contact 
         if contact is not None:
             force = (np.array([contact.fx, contact.fy, contact.fz]))/100
             pos = contact.contact_point
+            plot_contact = ax.scatter(pos[0], pos[1], pos[2], color='red')
+            if j == 0:
+                legend_elements.append((plot_contact))
+                legeend_labels.append(("Contact points"))
             origin = pos  # Assuming the vector starts at the origin
             plot_force = ax.quiver( origin[0], origin[1], origin[2], force[0], force[1], force[2], color='blue', linewidth=2)
             if j == 0:
@@ -473,6 +472,7 @@ def display_more(poly_list, legend_name=' default_legend_name'):
                 poly.faces = ply.face_index_to_vertex(poly.vertices,poly.face_indices)
 
             vertices = np.array(poly.vertices)
+            ax.scatter(vertices[0], vertices[1], vertices[2], color='grey')
             for i, verts in enumerate(vertices):
                 p_min[i] = np.minimum(p_min[i], np.min(verts))
                 p_max[i] = np.maximum(p_max[i], np.max(verts))
@@ -541,8 +541,11 @@ def display_FPolys_with_contacts(leg_force_limits):
             p_min = np.minimum(p_min, np.min(verts,axis = 0))
             p_max = np.maximum(p_max, np.max(verts,axis = 0))
 
+            verts = verts.T
+            ax.scatter(verts[0], verts[1], verts[2], color='grey') #display vertices
+
             # polytope
-            p = ply.Polytope(verts.T)
+            p = ply.Polytope(verts)
             p.find_grouped_vertices()
             ax.add_collection3d(Poly3DCollection(p.grouped_vertices, facecolors=colors[j], linewidths=1.0, edgecolors=(1,0,0,0.1), alpha=.25))     
             plot_patch = Patch(color=colors[j]) 
@@ -629,10 +632,11 @@ def compute_wrench_polytope(intersection_polys ):
                 # plt.show() 
 
             torques = np.array(torques).T
+
             # torques_cited = clean_and_add_point_out_of_plane(torques)
-            wrench = ply.Polytope()
-            wrench.find_from_point_cloud(points=np.array(torques))
-            wrench.display('red')
+            # wrench = ply.Polytope()
+            # wrench.find_from_point_cloud(points=np.array(torques))
+            # wrench.display('red')
 
             wrench_vertices = np.vstack((poly.vertices, torques))
             # wrench = ply.Polytope()
