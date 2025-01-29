@@ -7,6 +7,7 @@ Overview
 
 # from pycapacity.algorithms import *
 from scipy.spatial import ConvexHull, HalfspaceIntersection, Delaunay
+from scipy.optimize import linprog
 import numpy as np
 from cvxopt import matrix
 import cvxopt.glpk
@@ -169,25 +170,28 @@ class Polytope:
         Args:
             points (np.array): an array of points forming a point cloud 
         """
-        # O riduci la dimenzione e poi la allarghi dinuovo 
-        # o fai in modo che se una dimenzione e nulla, semplicemente vai avanti senza importartene
-        # o ancora provi a capire teoricamente quale dim e nulla e se i due polytopi possono essere considerati separatamente
-        
         
         # rank = np.linalg.matrix_rank(points)
-        # pca = PCA(n_components=rank)
-        # reduced_points = pca.fit_transform(np.array(points).T)
-        # delaunay = Delaunay(np.array(reduced_points))
 
-        # # delaunay = Delaunay(np.array(points).T)
-        # hull_indices = np.unique(delaunay.convex_hull)
-        # self.vertices = reduced_points[hull_indices]
-        # print('a')
+        # try:
+        #     H, d = vertex_to_hspace(points)
+        #     self.H, self.d  = remove_coincident_halfspaces(H, d)
+        #     self.vertices, self.face_indices = hspace_to_vertex(self.H,self.d)
+        # except:
+        #     hull = ConvexHull(points=points.T, qhull_options='Q0') #,qhull_options='QG4'
+        #     H = hull.equations[:,:-1]
+        #     d = -hull.equations[:,-1].reshape((-1,1))
+        #     feasible_point = chebyshev_ball_2(H,d)
+        #     hd_mat = np.hstack((np.array(H),-np.array(d)))
+        #     hd = HalfspaceIntersection(hd_mat,feasible_point)
+        #     hull = ConvexHull(hd.intersections)
+        #     self.vertices = hd.intersections.T
+        #     self.face_indices = hull.simplices
 
-        self.H, self.d = vertex_to_hspace(points)
+        H, d = vertex_to_hspace(points)
+        self.H, self.d  = remove_coincident_halfspaces(H, d)
+        self.vertices, self.face_indices = hspace_to_vertex(self.H,self.d)    
 
-        # coincident_pairs = remove_coincident_halfspaces(self.H, self.d)
-        self.vertices, self.face_indices = hspace_to_vertex(self.H,self.d)
 
     # minkowski sum of two polytopes
     def __add__(self, p):
@@ -271,7 +275,6 @@ class Polytope:
     def intersection(self, poly):
         p_int = self & poly
         p_int.vertices, p_int.face_indices = hspace_to_vertex(p_int.H,p_int.d)
-
         return p_int
     
 
@@ -493,6 +496,7 @@ def chebyshev_center(A,b):
     """
     # calculate the chebyshev ball
     c, r = chebyshev_ball(A,b)
+    
     return c
 
 
@@ -520,9 +524,44 @@ def chebyshev_ball(A,b):
     c[-1] = -1
     G = matrix(np.hstack((Ab_mat[:, :-1], norm_vector)))
     h = matrix(- Ab_mat[:, -1:])
-    solvers_opt={'tm_lim': 100000, 'msg_lev': 'GLP_MSG_OFF', 'it_lim':10000}
+    solvers_opt={'tm_lim': 1000000, 'msg_lev': 'GLP_MSG_OFF', 'it_lim':10000}
     res = cvxopt.glpk.lp(c=c,  G=G, h=h, options=solvers_opt)
     return np.array(res[1][:-1]).reshape((-1,)), np.array(res[1][-1]).reshape((-1,))
+
+
+def chebyshev_ball_2(A,b):
+    """
+    Calculating chebyshev ball of a polytope given the half-space representation
+
+    https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.HalfspaceIntersection.html#r9b902253b317-1
+
+    Args:
+        A(list):  
+            matrix of half-space representation `Ax<b`
+        b(list): 
+            vector of half-space representation `Ax<b`
+    Returns:
+        center(array): returns a chebyshev center of the polytope
+        radius(float): returns a chebyshev radius of the polytope
+    """
+    # calculate the vertices
+    Ab_mat = np.hstack((np.array(A),-np.array(b)))
+
+    # calculating chebyshev center
+    norm_vector = np.reshape(np.linalg.norm(Ab_mat[:, :-1], axis=1), (A.shape[0], 1))
+    c = np.zeros((Ab_mat.shape[1],))
+    c[-1] = -1
+    G = matrix(np.hstack((Ab_mat[:, :-1], norm_vector)))
+    h = matrix(- Ab_mat[:, -1:])
+    res = linprog(c, A_ub=G, b_ub=h, method='highs')
+    if res.success:
+        print("Soluzione trovata con HiGHS!")
+        chebyshev_center = res.x[:-1]  # Ultima variabile è il raggio
+        radius = res.x[-1]
+    else:
+        print("Errore nell'ottimizzazione:", res.message)
+
+    return chebyshev_center
 
 
 def order_index(points):
@@ -652,6 +691,13 @@ def remove_coincident_halfspaces(H, d, tolerance=1e-6):
             norm1 = np.linalg.norm(h1)
             norm2 = np.linalg.norm(h2)
             if norm1 < tolerance or norm2 < tolerance:
+                continue
+
+            # Calcola la distanza tra i due piani
+            plane_distance = abs(d1 - d2) / np.linalg.norm(h1)
+            
+            # Se i piani sono paralleli ma troppo distanti, li ignoriamo
+            if plane_distance > tolerance:
                 continue
 
             # Normalizza i vettori

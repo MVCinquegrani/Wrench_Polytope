@@ -639,8 +639,8 @@ def compute_wrench_polytope(intersection_polys ):
             # wrench.display('red')
 
             wrench_vertices = np.vstack((poly.vertices, torques))
-            # wrench = ply.Polytope()
-            # wrench.find_from_point_cloud(points=np.array(wrench_vertices))
+            wrench = ply.Polytope()
+            wrench.find_from_point_cloud(points=np.array(wrench_vertices))
             WPoly = ply.ContactPolytope(contact, foot_name, vertices = wrench_vertices)
             WPoly.find_grouped_vertices()
             WPolys.append(WPoly)
