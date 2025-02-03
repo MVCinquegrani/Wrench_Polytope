@@ -6,7 +6,7 @@ Overview
 """
 
 # from pycapacity.algorithms import *
-from scipy.spatial import ConvexHull, HalfspaceIntersection, Delaunay
+from scipy.spatial import ConvexHull, HalfspaceIntersection, Delaunay, cKDTree
 from scipy.optimize import linprog
 import numpy as np
 from cvxopt import matrix
@@ -171,26 +171,56 @@ class Polytope:
             points (np.array): an array of points forming a point cloud 
         """
         
-        # rank = np.linalg.matrix_rank(points)
-
-        # try:
-        #     H, d = vertex_to_hspace(points)
-        #     self.H, self.d  = remove_coincident_halfspaces(H, d)
-        #     self.vertices, self.face_indices = hspace_to_vertex(self.H,self.d)
-        # except:
-        #     hull = ConvexHull(points=points.T, qhull_options='Q0') #,qhull_options='QG4'
-        #     H = hull.equations[:,:-1]
-        #     d = -hull.equations[:,-1].reshape((-1,1))
-        #     feasible_point = chebyshev_ball_2(H,d)
-        #     hd_mat = np.hstack((np.array(H),-np.array(d)))
-        #     hd = HalfspaceIntersection(hd_mat,feasible_point)
-        #     hull = ConvexHull(hd.intersections)
-        #     self.vertices = hd.intersections.T
-        #     self.face_indices = hull.simplices
+        rank = np.linalg.matrix_rank(points)    #debug
 
         H, d = vertex_to_hspace(points)
         self.H, self.d  = remove_coincident_halfspaces(H, d)
-        self.vertices, self.face_indices = hspace_to_vertex(self.H,self.d)    
+        # self.H =H
+        # self.d = d
+        self.vertices, self.face_indices = hspace_to_vertex(self.H,self.d, points)    
+
+    def find_from_point_cloud_bigDim(self, points):
+        """
+        A function updating the polytope object from a point cloud it calculates the vertex and half-plane representation of the polytope. 
+        
+        Note:
+            The polytope will be constructed as a convex hull of the point cloud
+
+        Args:
+            points (np.array): an array of points forming a point cloud 
+        """
+        
+        rank = np.linalg.matrix_rank(points)    #debug
+
+        tree = cKDTree(points)
+        unique_indices = tree.query_ball_tree(tree, 1e-2)
+        
+        # Seleziona solo un punto per ogni gruppo di vicini
+        selected_indices = [min(indices) for indices in unique_indices]
+        
+        new_points = points[np.unique(selected_indices),:]
+
+        hull = ConvexHull(points = new_points, qhull_options='QJ Q12') 
+        # vertices = new_points[hull.vertices]
+        # hull2 = ConvexHull(points=vertices, qhull_options='Q12')
+        # self.vertices = vertices[hull2.vertices].T
+        self.vertices = new_points[hull.vertices].T
+        self.H = hull.equations[:,:-1]
+        self.d = -hull.equations[:,-1].reshape((-1,1))
+
+        # self.H, self.d  = remove_coincident_halfspaces(self.H, self.d)
+
+        # self.vertices, self.face_indices = hspace_to_vertex(self.H,self.d, new_points.T) 
+
+        # H = hull2.equations[:,:-1]
+        # d = -hull2.equations[:,-1].reshape((-1,1))
+        # d = d.reshape(-1,1)
+        # hd_mat = np.hstack((np.array(H),-np.array(d)))
+        # feasible_point = chebyshev_center(H,d)
+        # hd = HalfspaceIntersection(hd_mat,feasible_point)
+        # hull3 = ConvexHull(hd.intersections)
+        # self.vertices = hd.intersections.T
+        # self.face_indices = hull3.simplices    
 
 
     # minkowski sum of two polytopes
@@ -206,6 +236,7 @@ class Polytope:
         P_sum = Polytope()
         if True:
             points=np.array(vertices_sum).T
+            
             centro = np.mean(points, axis=1)
 
             # # Trasporre la matrice per lavorare con i punti come righe
@@ -414,14 +445,14 @@ def vertex_to_hspace(vertex):
         d(list): vector of half-space representation `Hx<d`
     """
     try:
-        hull = ConvexHull(vertex.T, qhull_options='QJ')
+        hull = ConvexHull(vertex.T, qhull_options='QJ Qx')
     except:
-        hull = ConvexHull(vertex.T, qhull_options='QJ0')
+        hull = ConvexHull(vertex.T, qhull_options='QJ')
 
     return  hull.equations[:,:-1], -hull.equations[:,-1].reshape((-1,1))
 
 
-def hspace_to_vertex(H,d):
+def hspace_to_vertex(H,d,points = None):
     """
     From half-space representation to the vertex representation
 
@@ -444,7 +475,14 @@ def hspace_to_vertex(H,d):
     
         hd_mat = np.hstack((np.array(H),-np.array(d)))
         # calculate a feasible point inside the polytope
-        feasible_point = chebyshev_center(H,d)
+        if points is not None:
+            feasible_point = np.mean(points.T, axis=0)
+        else: 
+            feasible_point = chebyshev_center(H,d)
+        # try:
+        #     feasible_point = chebyshev_center(H,d)
+        # except:
+        #     feasible_point = np.mean(points.T, axis=0)
         # calculate the convex hull
         try:
             hd = HalfspaceIntersection(hd_mat,feasible_point)
@@ -452,11 +490,11 @@ def hspace_to_vertex(H,d):
         except:
             print("H2V: Convex hull issue: using QJ option! ")
             try:
-                hd = HalfspaceIntersection(hd_mat,feasible_point,qhull_options='QJ')
+                hd = HalfspaceIntersection(hd_mat,feasible_point,qhull_options='Qx Qt Qbb Qc')
                 hull = ConvexHull(hd.intersections)
             except:
                 print("H2V: Convex hull issue: using Q0 option! ")
-                hd = HalfspaceIntersection(hd_mat,feasible_point,qhull_options='Q0')
+                hd = HalfspaceIntersection(hd_mat,feasible_point,qhull_options='QJ Q12')
                 hull = ConvexHull(hd.intersections)
 
                 # print("ciaaaaa")
@@ -496,7 +534,7 @@ def chebyshev_center(A,b):
     """
     # calculate the chebyshev ball
     c, r = chebyshev_ball(A,b)
-    
+
     return c
 
 
@@ -524,7 +562,7 @@ def chebyshev_ball(A,b):
     c[-1] = -1
     G = matrix(np.hstack((Ab_mat[:, :-1], norm_vector)))
     h = matrix(- Ab_mat[:, -1:])
-    solvers_opt={'tm_lim': 1000000, 'msg_lev': 'GLP_MSG_OFF', 'it_lim':10000}
+    solvers_opt={'tm_lim': 10000, 'msg_lev': 'GLP_MSG_OFF', 'it_lim':10000}
     res = cvxopt.glpk.lp(c=c,  G=G, h=h, options=solvers_opt)
     return np.array(res[1][:-1]).reshape((-1,)), np.array(res[1][-1]).reshape((-1,))
 
@@ -558,10 +596,10 @@ def chebyshev_ball_2(A,b):
         print("Soluzione trovata con HiGHS!")
         chebyshev_center = res.x[:-1]  # Ultima variabile è il raggio
         radius = res.x[-1]
+        return chebyshev_center, radius
     else:
         print("Errore nell'ottimizzazione:", res.message)
 
-    return chebyshev_center
 
 
 def order_index(points):

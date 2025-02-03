@@ -581,19 +581,6 @@ def compute_wrench_polytope(intersection_polys ):
     origin = np.zeros(3) # debug
     WPolys = []
     WPoly3Ds = []
-    
-
-    def set_equal_aspect(ax, data_points):
-        # Calcola i limiti globali basati su tutti i punti
-        x_limits = [min(data_points[0, :]), max(data_points[0, :])]
-        y_limits = [min(data_points[1, :]), max(data_points[1, :])]
-        z_limits = [min(data_points[2, :]), max(data_points[2, :])]
-        global_min = min(x_limits[0], y_limits[0], z_limits[0])
-        global_max = max(x_limits[1], y_limits[1], z_limits[1])
-        ax.set_xlim([global_min, global_max])
-        ax.set_ylim([global_min, global_max])
-        ax.set_zlim([global_min, global_max])
-
 
     for poly in intersection_polys:
         if poly.contact is None: 
@@ -617,20 +604,6 @@ def compute_wrench_polytope(intersection_polys ):
                 torque = np.cross(p,vertex)
                 torques.append(torque)
 
-
-                # # cross product figure ( rendi assi stessa ordine di misura)
-                # fig = plt.figure()
-                # ax = fig.add_subplot(111, projection='3d')
-                # ax.scatter(np.array(torques)[:,0], np.array(torques)[:, 1], np.array(torques)[:, 2], color='grey', label="ciaaa")
-                # ax.scatter(torque[0], torque[1], torque[2], color='green', label="ciaaa")
-                # ax.quiver( origin[0], origin[1], origin[2], p[0], p[1], p[2], color='blue', linewidth=2)
-                # # ax.quiver( p[0], p[1], p[2], vertex[0], vertex[1], vertex[2], color='red', linewidth=2)
-                # ax.quiver( origin[0], origin[1], origin[2], vertex[0] - p[0], vertex[1] - p[1], vertex[2] - p[2], color='red', linewidth=2)
-                # ax.quiver( origin[0], origin[1], origin[2], torque[0], torque[1], torque[2], color='green', linewidth=2)
-                # all_points = np.array([origin, p, vertex, torque]).T
-                # set_equal_aspect(ax, all_points)
-                # plt.show() 
-
             torques = np.array(torques).T
 
             # torques_cited = clean_and_add_point_out_of_plane(torques)
@@ -639,10 +612,11 @@ def compute_wrench_polytope(intersection_polys ):
             # wrench.display('red')
 
             wrench_vertices = np.vstack((poly.vertices, torques))
-            wrench = ply.Polytope()
-            wrench.find_from_point_cloud(points=np.array(wrench_vertices))
+            # wrench = ply.Polytope()
+            # wrench.find_from_point_cloud(points=np.array(wrench_vertices))
             WPoly = ply.ContactPolytope(contact, foot_name, vertices = wrench_vertices)
             WPoly.find_grouped_vertices()
+            WPoly.find_halfplanes()
             WPolys.append(WPoly)
             WPoly3D = ply.ContactPolytope(contact, foot_name, vertices = wrench_vertices[3:, :])
             WPoly3D.find_grouped_vertices()
@@ -654,9 +628,59 @@ def Minkowski_Sum(Wpoly):
     # sum = Wpoly[0]
     # for poly in Wpoly[1:]:
     #     sum = sum + poly 
-    sum1 = Wpoly[0] + Wpoly[1]
-    sum2 = Wpoly[2] + Wpoly[3]
-    sum = sum1 + sum2
+        # sum1 = Wpoly[0] + Wpoly[1]
+        # sum2 = Wpoly[2] + Wpoly[3]
+        # sum = sum1 + sum2
+
+    for poly in Wpoly[1:]:
+        if poly.vertices is None:
+            poly.find_vertices()
+
+        # vertices_sum_1 = []
+        # for v1 in Wpoly[0].vertices.T:
+        #     for v2 in Wpoly[1].vertices.T:
+        #         vertices_sum_1.append(v1+v2)
+        
+        # vertices_sum_2 = []
+        # for v3 in Wpoly[2].vertices.T:
+        #     for v4 in Wpoly[3].vertices.T:
+        #         vertices_sum_2.append(v3+v4)
+
+        # # vertices_sum_2 = []
+        # # for v3 in Wpoly[2].vertices.T:
+        # #     for v4 in vertices_sum_1:
+        # #         vertices_sum_2.append(v3+v4)
+        
+        # vertices_sum = []
+        # for v5 in vertices_sum_1:
+        #     for v6 in vertices_sum_2:
+        #         vertices_sum.append(v5+v6)
+
+        # vertices_sum = []
+        # for v1 in Wpoly[0].vertices.T:
+        #     for v2 in Wpoly[1].vertices.T:
+        #         for v3 in Wpoly[2].vertices.T:
+        #            for v4 in Wpoly[3].vertices.T:
+        #                 vertices_sum.append(v1+v2+v3+v4) 
+
+        vertices_sum = []
+        for v1 in Wpoly[0].vertices.T:
+            for v2 in Wpoly[1].vertices.T:
+                for v3 in Wpoly[2].vertices.T:
+                        vertices_sum.append(v1+v2+v3)     
+
+        P_sum = ply.Polytope()
+        # if True:
+        #     points=np.array(vertices_sum).T
+            
+        #     centro = np.mean(points, axis=1)
+
+        P_sum.find_from_point_cloud_bigDim(points=np.array(vertices_sum))
+        return P_sum
+
+
+
+
 
     FWP = ply.ContactPolytope(polytope=sum)
     return FWP    

@@ -64,7 +64,7 @@ while True:
             # Force Geometry
             fwp.contacts_linking(leg_force_limits, contacts)
             Force_Polys = fwp.compute_polytopes(leg_force_limits)
-            fwp.display_more(Force_Polys, " force geometry")
+            # fwp.display_more(Force_Polys, " force geometry")
 
                                             # # Chris
                                             # Wpoly,WPoly3D = fwp.compute_wrench_polytope(leg_force_limits)
@@ -72,7 +72,7 @@ while True:
 
             # Friction Geometry
             Fpolys = fwp.compute_friction_pyramids(contacts)
-            fwp.display_more(Fpolys, " Friction pyramids")
+            # fwp.display_more(Fpolys, " Friction pyramids")
 
             # # Polts customized
             # fwp.display_FPolys_with_contacts(leg_force_limits)
@@ -80,19 +80,19 @@ while True:
 
             # Geometry intersection (ContactPolytope type)
             intersection_polys = fwp.compute_intersection(leg_force_limits, Fpolys)
-            fwp.display_more(intersection_polys, " Intersection Geometry")
+            # fwp.display_more(intersection_polys, " Intersection Geometry")
 
             # Add the trorque to the interection polytope
             WPoly,WPoly3D = fwp.compute_wrench_polytope(intersection_polys) 
-            fwp.display_more(WPoly3D, " torque poly")
+            # fwp.display_more(WPoly3D, " torque poly")
 
             # Compute the Minkowski Sum of the intersections (pyc) (line 171 polytope_geom file)
             FWP = fwp.Minkowski_Sum(WPoly)
-            # FWP3D = fwp.reduction3D(FWP)
-            FWP.display('green')    
+            FWP3D = fwp.reduction3D(FWP)
+            FWP3D.display('green')
 
-            # # w_GI = np.array([...])  # Replace with the actual gravito-inertial wrench vector.
-            # s = fwp.compute_feasibility_metric(Wpoly)
+            # w_GI = np.array([...])  # Replace with the actual gravito-inertial wrench vector.
+            # s = fwp.compute_feasibility_metric(FWP)
             # print("Feasibility metric:", s)
 
 
