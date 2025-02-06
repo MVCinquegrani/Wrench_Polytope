@@ -3,7 +3,6 @@ import pinocchio_utils as pin_ut
 from contact_analysis import ContactManager
 import FW_Polytope as fwp
 import numpy as np
-import pinocchio as PIN
 # import meshcat
 import matplotlib.pyplot as plt  
 import os
@@ -57,18 +56,19 @@ while True:
         # Contact in Mujoco
         contacts = ContactManager(mjmodel, h, n, EE_site)
         contacts.update(mjmodel, mjdata)
-        contacts.print_contact_forces()
+        # contacts.print_contact_forces() 
 
-        if mjdata.time >= 0.3:
+        if mjdata.time >= 0.5:
 
             # Force Geometry
             fwp.contacts_linking(leg_force_limits, contacts)
             Force_Polys = fwp.compute_polytopes(leg_force_limits)
             # fwp.display_more(Force_Polys, " force geometry")
-
-                                            # # Chris
-                                            # Wpoly,WPoly3D = fwp.compute_wrench_polytope(leg_force_limits)
-                                            # fwp.display_more(WPoly3D, " torque poly")
+            
+            # # Degug find metrics, it seems to be working on 3D geometry. 
+            # prova = leg_force_limits[0].polytope           
+            # punto = leg_force_limits[0].contact.contact_point
+            # s = fwp.compute_feasibility_metric(prova, punto)
 
             # Friction Geometry
             Fpolys = fwp.compute_friction_pyramids(contacts)
@@ -83,17 +83,19 @@ while True:
             # fwp.display_more(intersection_polys, " Intersection Geometry")
 
             # Add the trorque to the interection polytope
-            WPoly,WPoly3D = fwp.compute_wrench_polytope(intersection_polys) 
+            WPoly = fwp.compute_wrench_polytope(intersection_polys) 
             # fwp.display_more(WPoly3D, " torque poly")
 
             # Compute the Minkowski Sum of the intersections (pyc) (line 171 polytope_geom file)
-            FWP = fwp.Minkowski_Sum(WPoly)
+            FWP = fwp.Minkowski_Sum(WPoly) # (only 3 contacts)
             FWP3D = fwp.reduction3D(FWP)
-            FWP3D.display('green')
+            # FWP3D.display('green')
 
-            # w_GI = np.array([...])  # Replace with the actual gravito-inertial wrench vector.
-            # s = fwp.compute_feasibility_metric(FWP)
-            # print("Feasibility metric:", s)
+            # Compute the gravito-inertial wrench vector.
+            w_GI = pin_ut.p_WGI(pmodel, pdata, q, q_vel, q_acc) 
+            FWP_com = fwp.translated_polytope(FWP)
+            s = fwp.compute_feasibility_metric(FWP_com, w_GI)   #= np.array([9,9,9,9,9,9])
+            print("Feasibility metric:", s)
 
 
         # Update view window of Mujoco

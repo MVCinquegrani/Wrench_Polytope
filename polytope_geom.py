@@ -478,6 +478,7 @@ def hspace_to_vertex(H,d,points = None):
         if points is not None:
             feasible_point = np.mean(points.T, axis=0)
         else: 
+            
             feasible_point = chebyshev_center(H,d)
         # try:
         #     feasible_point = chebyshev_center(H,d)

@@ -618,11 +618,11 @@ def compute_wrench_polytope(intersection_polys ):
             WPoly.find_grouped_vertices()
             WPoly.find_halfplanes()
             WPolys.append(WPoly)
-            WPoly3D = ply.ContactPolytope(contact, foot_name, vertices = wrench_vertices[3:, :])
-            WPoly3D.find_grouped_vertices()
-            WPoly3Ds.append(WPoly3D)
+            # WPoly3D = ply.ContactPolytope(contact, foot_name, vertices = wrench_vertices[3:, :])
+            # WPoly3D.find_grouped_vertices()
+            # WPoly3Ds.append(WPoly3D)
 
-    return WPolys,WPoly3Ds
+    return WPolys #,WPoly3Ds
 
 def Minkowski_Sum(Wpoly):
     # sum = Wpoly[0]
@@ -636,38 +636,21 @@ def Minkowski_Sum(Wpoly):
         if poly.vertices is None:
             poly.find_vertices()
 
-        # vertices_sum_1 = []
-        # for v1 in Wpoly[0].vertices.T:
-        #     for v2 in Wpoly[1].vertices.T:
-        #         vertices_sum_1.append(v1+v2)
-        
-        # vertices_sum_2 = []
-        # for v3 in Wpoly[2].vertices.T:
-        #     for v4 in Wpoly[3].vertices.T:
-        #         vertices_sum_2.append(v3+v4)
-
-        # # vertices_sum_2 = []
-        # # for v3 in Wpoly[2].vertices.T:
-        # #     for v4 in vertices_sum_1:
-        # #         vertices_sum_2.append(v3+v4)
-        
-        # vertices_sum = []
-        # for v5 in vertices_sum_1:
-        #     for v6 in vertices_sum_2:
-        #         vertices_sum.append(v5+v6)
+        vertices_sum = []
+        for v1 in Wpoly[0].vertices.T:
+            for v2 in Wpoly[1].vertices.T:
+                for v3 in Wpoly[2].vertices.T:
+                   for v4 in Wpoly[3].vertices.T:
+                        vertices_sum.append(v1+v2+v3+v4) 
 
         # vertices_sum = []
         # for v1 in Wpoly[0].vertices.T:
         #     for v2 in Wpoly[1].vertices.T:
         #         for v3 in Wpoly[2].vertices.T:
-        #            for v4 in Wpoly[3].vertices.T:
-        #                 vertices_sum.append(v1+v2+v3+v4) 
+        #                 vertices_sum.append(v1+v2+v3)  
 
-        vertices_sum = []
-        for v1 in Wpoly[0].vertices.T:
-            for v2 in Wpoly[1].vertices.T:
-                for v3 in Wpoly[2].vertices.T:
-                        vertices_sum.append(v1+v2+v3)     
+        # filtered_points = filter_points_by_std(vertices_sum,2)   
+        filtered_points = vertices_sum            
 
         P_sum = ply.Polytope()
         # if True:
@@ -675,12 +658,8 @@ def Minkowski_Sum(Wpoly):
             
         #     centro = np.mean(points, axis=1)
 
-        P_sum.find_from_point_cloud_bigDim(points=np.array(vertices_sum))
+        P_sum.find_from_point_cloud_bigDim(points=np.array(filtered_points))
         return P_sum
-
-
-
-
 
     FWP = ply.ContactPolytope(polytope=sum)
     return FWP    
@@ -731,9 +710,40 @@ def reduction3D(FWP):
     if FWP.vertices is None:
         print ("vertices uknown or not specified\n")
     else: 
-        FWP3D = ply.Polytope(vertices = FWP.vertices[:3, :])
+        FWP3D = ply.Polytope(vertices = FWP.vertices[3:, :])
         FWP3D.find_grouped_vertices()
     return FWP3D
+
+
+def filter_points_by_std(points, k=1.0):
+    """
+    Filtra i punti eliminando quelli che si trovano entro k deviazioni standard dalla media 
+    in tutte e 6 le dimensioni contemporaneamente.
+    
+    :param points: numpy array di forma (2000, 6) contenente i punti.
+    :param k: moltiplicatore della deviazione standard (default 1.0).
+    :return: numpy array contenente solo i punti che non soddisfano il criterio di eliminazione.
+    """
+
+    # Converti points in un array numpy se non lo è già
+    points = np.asarray(points)
+
+    # Calcolo della media e della deviazione standard per ogni dimensione
+    mean = np.mean(points, axis=0)
+    std = np.std(points, axis=0)
+    
+    # Calcola i limiti di esclusione
+    lower_bound = mean - k * std
+    upper_bound = mean + k * std
+    
+    # Identifica i punti che NON rientrano nell'intervallo in almeno una dimensione
+    mask = np.any((points < lower_bound) | (points > upper_bound), axis=1)
+    mask = np.asarray(mask, dtype=bool)
+    
+    # Filtra i punti mantenendo solo quelli fuori dal range in almeno una dimensione
+    filtered_points = points[mask]
+    
+    return filtered_points
 
 
 # def remove_repeated_vertices(poly):
@@ -773,48 +783,76 @@ def reduction3D(FWP):
 #         if not new_red:
             # i += 1
 
-
+def translated_polytope(FWP):
+    centroid = ply.chebyshev_center(FWP.H,FWP.d)
+    centroid = centroid.reshape(-1, 1) 
+    FWP_com = ply.Polytope(FWP.vertices - centroid)
+    return FWP_com 
 
 def compute_feasibility_metric(FWP, w_GI=np.zeros(6)):
     """
-    Computes the feasibility metric `s` based on the feasible wrench polytope (FWP) and the gravito-inertial wrench (w_GI).
+    Computes the feasibility metric `s` by formulating and solving a linear program.
+    
+    The goal is to find the maximum scalar 's' such that:
+      1) V * lambda = w_GI            (where V are the polytope vertices)
+      2) sum(lambda) + s = 1
+      3) lambda_i >= 0
+      4) s <= 1
 
     Args:
-        FWP (Polytope): The feasible wrench polytope in vertex form.
-        w_GI (np.ndarray): The gravito-inertial wrench, a 6D vector.
+        FWP (Polytope): The feasible wrench polytope in vertex form, with shape (6 x nv).
+        w_GI (np.ndarray): The gravito-inertial wrench (6D vector), default is all zeros.
 
     Returns:
-        float: Feasibility metric `s`.
+        float or None: The feasibility metric 's' if the LP is solved successfully, otherwise None.
     """
 
+    # If vertices are not precomputed, find them
     if FWP.vertices is None:
         FWP.find_vertices()
 
-    # Extract vertices of the polytope as a matrix (V)
-    V = np.array(FWP.vertices).T  # Shape (6, nv), where nv is the number of vertices
+    # Convert the polytope vertices to a NumPy array (6 x nv)
+    V = np.array(FWP.vertices)
     nv = V.shape[1]
 
-    # Define the LP problem
-    c = np.zeros(nv + 1)  # Objective vector for LP (LP solvers, talways minimize) : maximize s (last variable)
-    c[-1] = -1           # Coefficients: minimize -s, which is equivalent to maximizing s
+    # Linear program objective: maximize s
+    # linprog() minimizes by default, so we minimize -s (c = [0..0, -1])
+    c = np.zeros(nv + 1)
+    c[-1] = -1
 
-    # Equality constraint: V * lambda = w_GI
-    A_eq = np.hstack((V, -w_GI.reshape(-1, 1)))  # Add -s term as an extra column
-    b_eq = w_GI
+    # Equality constraints:
+    # 1) V*lambda = w_GI
+    A_eq1 = np.hstack([V, np.zeros((w_GI.size, 1))])  # No s contribution in this equation
+    b_eq1 = w_GI
 
-    # Inequality constraints: lambda_i >= 0 and s <= 1
-    A_ub = np.zeros((nv + 1, nv + 1))
-    np.fill_diagonal(A_ub[:nv, :nv], -1)  # -lambda_i <= 0
-    A_ub[-1, -1] = 1                      # s <= 1
-    b_ub = np.zeros(nv + 1)
-    b_ub[-1] = 1
+    # 2) sum(lambda_i) + s = 1
+    A_eq2 = np.zeros((1, nv + 1))
+    A_eq2[0, :nv] = 1
+    A_eq2[0, -1] = 1
+    b_eq2 = np.array([1])
 
-    # Solve the LP
+    # Combine equality constraints
+    A_eq = np.vstack((A_eq1, A_eq2))
+    b_eq = np.concatenate((b_eq1, b_eq2))
+
+    # Inequality constraints:
+    # 1) lambda_i >= 0 -> -lambda_i <= 0
+    A_ub = np.zeros((nv, nv + 1))
+    for i in range(nv):
+        A_ub[i, i] = -1
+    b_ub = np.zeros(nv)
+
+    # 2) s <= 1 -> s - 1 <= 0
+    A_ub_s = np.zeros((1, nv + 1))
+    A_ub_s[0, -1] = 1
+    A_ub = np.vstack((A_ub, A_ub_s))
+    b_ub = np.concatenate((b_ub, [1]))
+
+    # Solve the LP using the 'highs' method
     res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, method='highs')
 
+    # If the solver succeeds, return s = -res.fun. Otherwise return None.
     if res.success:
-        s = -res.fun  # LP minimizes -s, so the result needs to be negated
-        return s
+        return -res.fun
     else:
-        print("LP did not converge. The wrench might be infeasible.")
-        return -np.inf  # Indicate infeasibility
+        return None
